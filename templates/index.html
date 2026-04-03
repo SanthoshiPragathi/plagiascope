@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PlagiaScope — Semantic Plagiarism Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #0a0a0f;
+  --surface:  #111118;
+  --card:     #16161f;
+  --border:   #1e1e2e;
+  --accent:   #7c6aff;
+  --accent2:  #ff6a9b;
+  --green:    #3ddc84;
+  --yellow:   #ffd166;
+  --red:      #ff4757;
+  --text:     #e8e8f0;
+  --muted:    #6b6b80;
+  --mono:     'Space Mono', monospace;
+  --sans:     'DM Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* grid bg */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(124,106,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(124,106,255,.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0
+}
+
+/* HEADER */
+header{
+  position:relative;z-index:10;
+  padding:2rem 2.5rem;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,10,15,.8);backdrop-filter:blur(12px);
+  position:sticky;top:0;
+}
+.logo{display:flex;align-items:center;gap:.75rem}
+.logo-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:grid;place-items:center;font-size:18px;
+}
+.logo-text{font-family:var(--mono);font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
+.logo-text span{color:var(--accent)}
+.badge{
+  font-family:var(--mono);font-size:.65rem;padding:.25rem .6rem;
+  border-radius:999px;background:rgba(124,106,255,.15);
+  border:1px solid rgba(124,106,255,.3);color:var(--accent);letter-spacing:.08em
+}
+
+/* HERO */
+.hero{
+  text-align:center;padding:4rem 2rem 3rem;position:relative;z-index:1
+}
+.hero h1{
+  font-family:var(--mono);font-size:clamp(1.8rem,4vw,3rem);
+  font-weight:700;line-height:1.1;margin-bottom:1rem;
+  background:linear-gradient(135deg,#fff 30%,var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent
+}
+.hero p{color:var(--muted);font-size:1rem;max-width:520px;margin:0 auto 2rem;line-height:1.6}
+.tech-pills{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.pill{
+  font-size:.72rem;font-family:var(--mono);padding:.3rem .8rem;
+  border-radius:999px;border:1px solid var(--border);
+  color:var(--muted);background:var(--surface);letter-spacing:.05em
+}
+.pill.accent{border-color:rgba(124,106,255,.4);color:var(--accent);background:rgba(124,106,255,.08)}
+
+/* MAIN LAYOUT */
+main{max-width:1200px;margin:0 auto;padding:2rem;position:relative;z-index:1}
+
+/* TABS */
+.tabs{display:flex;gap:.5rem;margin-bottom:2rem;background:var(--surface);
+  padding:.4rem;border-radius:12px;border:1px solid var(--border);width:fit-content}
+.tab{
+  padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;font-weight:500;
+  cursor:pointer;border:none;background:transparent;color:var(--muted);
+  transition:all .2s;font-family:var(--sans)
+}
+.tab.active{background:var(--accent);color:#fff}
+.tab:hover:not(.active){color:var(--text)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* INPUT GRID */
+.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+@media(max-width:768px){.input-grid{grid-template-columns:1fr}}
+
+.input-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;transition:border-color .2s
+}
+.input-card:focus-within{border-color:rgba(124,106,255,.5)}
+.input-header{
+  padding:.8rem 1rem;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)
+}
+.input-label{font-size:.78rem;font-family:var(--mono);color:var(--muted);letter-spacing:.08em}
+.input-label span{
+  display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.5rem;vertical-align:middle
+}
+.label-source span{background:#3ddc84}
+.label-suspect span{background:#ff6a9b}
+.char-count{font-size:.72rem;font-family:var(--mono);color:var(--muted)}
+
+textarea{
+  width:100%;min-height:180px;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:var(--sans);font-size:.9rem;line-height:1.6;
+  padding:1rem;resize:vertical;
+}
+textarea::placeholder{color:var(--muted)}
+
+/* FILE UPLOAD */
+.file-zone{
+  margin:.5rem 1rem 1rem;border:1px dashed var(--border);border-radius:10px;
+  padding:.8rem;text-align:center;cursor:pointer;transition:all .2s;
+  font-size:.78rem;color:var(--muted);
+}
+.file-zone:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,106,255,.05)}
+.file-zone input{display:none}
+.file-zone.has-file{border-color:var(--green);color:var(--green);background:rgba(61,220,132,.05)}
+
+/* ANALYZE BTN */
+.analyze-btn{
+  width:100%;padding:1rem;border-radius:12px;border:none;cursor:pointer;
+  font-family:var(--mono);font-size:.95rem;font-weight:700;letter-spacing:.05em;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;transition:all .2s;position:relative;overflow:hidden
+}
+.analyze-btn:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(124,106,255,.4)}
+.analyze-btn:active{transform:translateY(0)}
+.analyze-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.analyze-btn .spinner{
+  display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;
+  margin:0 auto
+}
+.analyze-btn.loading .btn-text{display:none}
+.analyze-btn.loading .spinner{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* RESULTS */
+#results{display:none;margin-top:2rem;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* SCORE CARD */
+.score-card{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:2rem;margin-bottom:1.5rem;display:grid;
+  grid-template-columns:auto 1fr auto;gap:2rem;align-items:center
+}
+@media(max-width:600px){.score-card{grid-template-columns:1fr;text-align:center}}
+
+.score-ring{position:relative;width:120px;height:120px}
+.score-ring svg{transform:rotate(-90deg)}
+.score-ring circle{fill:none;stroke-width:8;stroke-linecap:round}
+.ring-bg{stroke:var(--border)}
+.ring-fill{stroke-dasharray:339.3;stroke-dashoffset:339.3;transition:stroke-dashoffset 1s ease}
+.score-ring .score-num{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:1.6rem;font-weight:700
+}
+.score-ring .score-num small{font-size:.6rem;color:var(--muted);margin-top:2px}
+
+.score-info h2{font-size:1.5rem;font-weight:600;margin-bottom:.4rem}
+.score-info .verdict-badge{
+  display:inline-block;padding:.3rem .8rem;border-radius:999px;
+  font-size:.78rem;font-family:var(--mono);font-weight:700;letter-spacing:.06em;margin-bottom:.8rem
+}
+.verdict-high{background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3)}
+.verdict-moderate{background:rgba(255,209,102,.15);color:var(--yellow);border:1px solid rgba(255,209,102,.3)}
+.verdict-low{background:rgba(124,106,255,.15);color:var(--accent);border:1px solid rgba(124,106,255,.3)}
+.verdict-original{background:rgba(61,220,132,.15);color:var(--green);border:1px solid rgba(61,220,132,.3)}
+
+.ngram-scores{display:flex;gap:1rem;flex-wrap:wrap}
+.ngram-score{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:.5rem .9rem;font-size:.8rem;font-family:var(--mono)
+}
+.ngram-score .label{color:var(--muted);font-size:.68rem;display:block;margin-bottom:2px}
+
+.score-meta{text-align:right;font-size:.8rem;color:var(--muted);font-family:var(--mono)}
+.score-meta div{margin-bottom:.3rem}
+.score-meta strong{color:var(--text)}
+
+/* HIGHLIGHTED TEXT */
+.highlight-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+@media(max-width:768px){.highlight-grid{grid-template-columns:1fr}}
+
+.highlight-card{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden
+}
+.highlight-header{
+  padding:.8rem 1rem;border-bottom:1px solid var(--border);
+  font-size:.78rem;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;
+  display:flex;align-items:center;gap:.5rem
+}
+.highlight-body{
+  padding:1rem;font-size:.88rem;line-height:1.8;max-height:200px;overflow-y:auto
+}
+.highlight-body mark{
+  background:rgba(255,209,102,.2);color:var(--yellow);
+  border-radius:3px;padding:0 2px;font-weight:500;border-bottom:1px solid rgba(255,209,102,.4)
+}
+
+/* MATCHES TABLE */
+.matches-section{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;margin-bottom:1.5rem
+}
+.matches-header{
+  padding:1rem 1.2rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between
+}
+.matches-header h3{font-size:.9rem;font-weight:600}
+.match-count{font-size:.78rem;font-family:var(--mono);color:var(--muted)}
+
+.match-row{
+  padding:.9rem 1.2rem;border-bottom:1px solid var(--border);
+  display:grid;grid-template-columns:auto 1fr 1fr auto;gap:1rem;align-items:center;
+  transition:background .15s
+}
+.match-row:last-child{border-bottom:none}
+.match-row:hover{background:rgba(255,255,255,.02)}
+.match-n{
+  font-family:var(--mono);font-size:.7rem;color:var(--muted);
+  background:var(--surface);padding:.2rem .5rem;border-radius:6px;white-space:nowrap
+}
+.match-text{font-size:.83rem}
+.match-text .label{font-size:.68rem;font-family:var(--mono);color:var(--muted);margin-bottom:2px}
+.match-text .value{color:var(--text)}
+.match-sim{
+  font-family:var(--mono);font-size:.82rem;font-weight:700;text-align:right;
+  white-space:nowrap
+}
+.sim-high{color:var(--red)}
+.sim-mid{color:var(--yellow)}
+.sim-low{color:var(--green)}
+.rare-badge{
+  font-size:.6rem;font-family:var(--mono);padding:.1rem .4rem;
+  background:rgba(255,209,102,.1);color:var(--yellow);border-radius:4px;
+  border:1px solid rgba(255,209,102,.2);display:inline-block;margin-top:2px
+}
+
+/* HISTORY */
+.history-section{margin-top:2rem}
+.history-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem
+}
+.history-header h3{font-size:1rem;font-weight:600}
+.clear-btn{
+  font-size:.78rem;font-family:var(--mono);padding:.35rem .8rem;
+  border-radius:8px;border:1px solid var(--border);background:transparent;
+  color:var(--muted);cursor:pointer;transition:all .2s
+}
+.clear-btn:hover{border-color:var(--red);color:var(--red)}
+
+#history-list{display:grid;gap:.75rem}
+.history-item{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:1rem 1.2rem;display:grid;grid-template-columns:auto 1fr auto;
+  gap:1rem;align-items:center;cursor:pointer;transition:border-color .2s
+}
+.history-item:hover{border-color:rgba(124,106,255,.4)}
+.history-score{
+  font-family:var(--mono);font-size:1.2rem;font-weight:700;min-width:50px;text-align:center
+}
+.history-info .ts{font-size:.72rem;font-family:var(--mono);color:var(--muted);margin-bottom:.3rem}
+.history-info .preview{font-size:.82rem;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px}
+.history-verdict{font-size:.72rem;font-family:var(--mono)}
+.empty-state{
+  text-align:center;padding:3rem;color:var(--muted);
+  font-size:.88rem;border:1px dashed var(--border);border-radius:12px
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🔍</div>
+    <div class="logo-text">Plagia<span>Scope</span></div>
+  </div>
+  <div class="badge">SEMANTIC AI</div>
+</header>
+
+<div class="hero">
+  <h1>Semantic Plagiarism<br/>Detection Engine</h1>
+  <p>Powered by Word2Vec embeddings + 0/1 Knapsack optimization. Catches paraphrased content that traditional tools miss.</p>
+  <div class="tech-pills">
+    <div class="pill accent">Word2Vec</div>
+    <div class="pill accent">Knapsack DP</div>
+    <div class="pill">N-Gram Analysis</div>
+    <div class="pill">TF-IDF Boost</div>
+    <div class="pill">Hybrid Similarity</div>
+  </div>
+</div>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('analyze')">Analyze</button>
+    <button class="tab" onclick="switchTab('history')">History</button>
+  </div>
+
+  <!-- ANALYZE TAB -->
+  <div class="tab-panel active" id="tab-analyze">
+    <form id="analyzeForm">
+      <div class="input-grid">
+        <!-- SOURCE -->
+        <div class="input-card">
+          <div class="input-header">
+            <div class="input-label label-source"><span></span>SOURCE DOCUMENT</div>
+            <div class="char-count" id="countA">0 chars</div>
+          </div>
+          <textarea id="sourceText" name="source_text" placeholder="Paste the original document here..."
+            oninput="updateCount('sourceText','countA')"></textarea>
+          <label class="file-zone" id="zoneA">
+            <input type="file" accept=".txt" onchange="handleFile(this,'sourceText','zoneA','countA')"/>
+            📄 Upload .txt file (optional)
+          </label>
+        </div>
+        <!-- SUSPECT -->
+        <div class="input-card">
+          <div class="input-header">
+            <div class="input-label label-suspect"><span></span>SUSPECT DOCUMENT</div>
+            <div class="char-count" id="countB">0 chars</div>
+          </div>
+          <textarea id="suspectText" name="suspect_text" placeholder="Paste the suspected document here..."
+            oninput="updateCount('suspectText','countB')"></textarea>
+          <label class="file-zone" id="zoneB">
+            <input type="file" accept=".txt" onchange="handleFile(this,'suspectText','zoneB','countB')"/>
+            📄 Upload .txt file (optional)
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="analyze-btn" id="analyzeBtn">
+        <span class="btn-text">⚡ ANALYZE DOCUMENTS</span>
+        <div class="spinner"></div>
+      </button>
+    </form>
+
+    <!-- RESULTS -->
+    <div id="results">
+      <!-- Score Card -->
+      <div class="score-card" id="scoreCard">
+        <div class="score-ring">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <circle class="ring-bg" cx="60" cy="60" r="54"/>
+            <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="54"/>
+          </svg>
+          <div class="score-num">
+            <span id="scoreNum">0</span>
+            <small>%</small>
+          </div>
+        </div>
+        <div class="score-info">
+          <div class="verdict-badge" id="verdictBadge">—</div>
+          <h2 id="verdictText">Analyzing...</h2>
+          <div class="ngram-scores">
+            <div class="ngram-score"><span class="label">1-GRAM</span><span id="s1">—</span></div>
+            <div class="ngram-score"><span class="label">2-GRAM</span><span id="s2">—</span></div>
+            <div class="ngram-score"><span class="label">3-GRAM</span><span id="s3">—</span></div>
+          </div>
+        </div>
+        <div class="score-meta">
+          <div>Matches: <strong id="metaMatches">—</strong></div>
+          <div>Vocab: <strong id="metaVocab">—</strong></div>
+          <div>Time: <strong id="metaTime">—</strong></div>
+        </div>
+      </div>
+
+      <!-- Highlighted Text -->
+      <div class="highlight-grid">
+        <div class="highlight-card">
+          <div class="highlight-header">
+            <span style="color:#3ddc84">●</span> SOURCE — matched words highlighted
+          </div>
+          <div class="highlight-body" id="highlightA"></div>
+        </div>
+        <div class="highlight-card">
+          <div class="highlight-header">
+            <span style="color:#ff6a9b">●</span> SUSPECT — matched words highlighted
+          </div>
+          <div class="highlight-body" id="highlightB"></div>
+        </div>
+      </div>
+
+      <!-- Matches -->
+      <div class="matches-section">
+        <div class="matches-header">
+          <h3>Matched Segments</h3>
+          <span class="match-count" id="matchCountLabel">—</span>
+        </div>
+        <div id="matchesList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div class="tab-panel" id="tab-history">
+    <div class="history-section">
+      <div class="history-header">
+        <h3>Past Comparisons</h3>
+        <button class="clear-btn" onclick="clearHistory()">Clear All</button>
+      </div>
+      <div id="history-list"><div class="empty-state">No history yet. Run an analysis first!</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── TAB SWITCHING
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active', ['analyze','history'][i]===name))
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'))
+  document.getElementById('tab-'+name).classList.add('active')
+  if(name==='history') loadHistory()
+}
+
+// ── CHAR COUNTER
+function updateCount(textareaId, countId) {
+  const len = document.getElementById(textareaId).value.length
+  document.getElementById(countId).textContent = len.toLocaleString() + ' chars'
+}
+
+// ── FILE UPLOAD
+function handleFile(input, textareaId, zoneId, countId) {
+  const file = input.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = e => {
+    document.getElementById(textareaId).value = e.target.result
+    updateCount(textareaId, countId)
+    const zone = document.getElementById(zoneId)
+    zone.classList.add('has-file')
+    zone.innerHTML = `<input type="file" accept=".txt" onchange="handleFile(this,'${textareaId}','${zoneId}','${countId}')"/>✅ ${file.name}`
+  }
+  reader.readAsText(file)
+}
+
+// ── FORM SUBMIT
+document.getElementById('analyzeForm').addEventListener('submit', async e => {
+  e.preventDefault()
+  const btn = document.getElementById('analyzeBtn')
+  btn.classList.add('loading'); btn.disabled = true
+
+  const formData = new FormData()
+  formData.append('source_text', document.getElementById('sourceText').value)
+  formData.append('suspect_text', document.getElementById('suspectText').value)
+
+  // file uploads
+  const fA = document.querySelector('#zoneA input').files[0]
+  const fB = document.querySelector('#zoneB input').files[0]
+  if (fA) formData.append('source_file', fA)
+  if (fB) formData.append('suspect_file', fB)
+
+  try {
+    const res = await fetch('/analyze', {method:'POST', body:formData})
+    const data = await res.json()
+    if (!res.ok) { alert(data.detail || 'Error'); return }
+    renderResults(data)
+  } catch(err) {
+    alert('Server error: ' + err.message)
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false
+  }
+})
+
+// ── RENDER RESULTS
+function renderResults(d) {
+  document.getElementById('results').style.display = 'block'
+  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'})
+
+  // Score ring
+  const score = d.score
+  const circumference = 339.3
+  const offset = circumference - (score / 100) * circumference
+  const ring = document.getElementById('ringFill')
+  const color = score>=70 ? '#ff4757' : score>=40 ? '#ffd166' : score>=15 ? '#7c6aff' : '#3ddc84'
+  ring.style.stroke = color
+  ring.style.strokeDashoffset = offset
+
+  // Animate number
+  let current = 0
+  const step = score / 40
+  const timer = setInterval(() => {
+    current = Math.min(current + step, score)
+    document.getElementById('scoreNum').textContent = current.toFixed(1)
+    if (current >= score) clearInterval(timer)
+  }, 25)
+
+  // Verdict
+  const vmap = {high:'verdict-high', moderate:'verdict-moderate', low:'verdict-low', original:'verdict-original'}
+  const badge = document.getElementById('verdictBadge')
+  badge.textContent = d.verdict
+  badge.className = 'verdict-badge ' + (vmap[d.verdict_level] || '')
+
+  document.getElementById('verdictText').textContent =
+    score>=70 ? 'Significant plagiarism detected' :
+    score>=40 ? 'Moderate similarity found' :
+    score>=15 ? 'Low similarity detected' : 'Document appears original'
+
+  // N-gram scores
+  document.getElementById('s1').textContent = d.scores_by_ngram.unigram + '%'
+  document.getElementById('s2').textContent = d.scores_by_ngram.bigram + '%'
+  document.getElementById('s3').textContent = d.scores_by_ngram.trigram + '%'
+
+  // Meta
+  document.getElementById('metaMatches').textContent = d.total_matches
+  document.getElementById('metaVocab').textContent = d.vocab_size + ' words'
+  document.getElementById('metaTime').textContent = d.time_taken + 's'
+
+  // Highlights
+  document.getElementById('highlightA').innerHTML = d.highlighted_source
+  document.getElementById('highlightB').innerHTML = d.highlighted_suspect
+
+  // Matches
+  document.getElementById('matchCountLabel').textContent = `${d.total_matches} matches found`
+  const list = document.getElementById('matchesList')
+  if (!d.matches.length) {
+    list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.85rem">No matches above threshold</div>'
+    return
+  }
+  list.innerHTML = d.matches.map(m => {
+    const simClass = m.sim>=80 ? 'sim-high' : m.sim>=50 ? 'sim-mid' : 'sim-low'
+    const nLabel = m.n===1?'1-gram':m.n===2?'2-gram':'3-gram'
+    return `
+    <div class="match-row">
+      <div class="match-n">${nLabel}</div>
+      <div class="match-text">
+        <div class="label">SOURCE</div>
+        <div class="value">"${m.ngA}"</div>
+      </div>
+      <div class="match-text">
+        <div class="label">SUSPECT</div>
+        <div class="value">"${m.ngB}"</div>
+        ${m.rare ? '<div class="rare-badge">RARE+</div>' : ''}
+      </div>
+      <div class="match-sim ${simClass}">${m.sim}%</div>
+    </div>`
+  }).join('')
+}
+
+// ── HISTORY
+async function loadHistory() {
+  const res = await fetch('/history')
+  const data = await res.json()
+  const el = document.getElementById('history-list')
+  if (!data.length) {
+    el.innerHTML = '<div class="empty-state">No history yet. Run an analysis first!</div>'
+    return
+  }
+  const vmap = {high:'verdict-high', moderate:'verdict-moderate', low:'verdict-low', original:'verdict-original'}
+  el.innerHTML = data.map(h => `
+    <div class="history-item">
+      <div class="history-score" style="color:${h.score>=70?'var(--red)':h.score>=40?'var(--yellow)':h.score>=15?'var(--accent)':'var(--green)'}">${h.score}%</div>
+      <div class="history-info">
+        <div class="ts">${h.timestamp}</div>
+        <div class="preview">${h.source_preview}</div>
+      </div>
+      <div class="history-verdict ${vmap[h.verdict_level]||''}">${h.verdict}</div>
+    </div>
+  `).join('')
+}
+
+async function clearHistory() {
+  if (!confirm('Clear all history?')) return
+  await fetch('/history', {method:'DELETE'})
+  loadHistory()
+}
+</script>
+</body>
+</html>
